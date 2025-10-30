@@ -21,16 +21,25 @@ const __dirname = path.dirname(__filename);
 
 // ✅ Allowed origins (CORS)
 const allowedOrigins = [
-  "https://noireblack.vercel.app", // your Vercel frontend
-  "http://localhost:5173",         // local dev
+  "https://noireblack.vercel.app",   // original Vercel deployment
+  "https://noireblackv2.vercel.app", // new Vercel version
+  "http://localhost:5173",           // local dev
 ];
 
-// ✅ CORS configuration
+// ✅ Smarter CORS config to support Vercel preview URLs dynamically
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin) return callback(null, true); // allow mobile/postman
-      if (allowedOrigins.includes(origin)) return callback(null, true);
+      if (!origin) return callback(null, true); // allow mobile/postman/no origin
+
+      // ✅ Allow your deployed sites and any vercel.app preview URLs
+      if (
+        allowedOrigins.includes(origin) ||
+        /\.vercel\.app$/.test(new URL(origin).hostname)
+      ) {
+        return callback(null, true);
+      }
+
       console.warn("❌ Blocked by CORS:", origin);
       return callback(new Error("Not allowed by CORS"));
     },
@@ -50,7 +59,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
 
-// ✅ Fallback root route (for Render health checks)
+// ✅ Root endpoint (for Render health checks)
 app.get("/", (req, res) => {
   res.send("🚀 Noire Backend is running successfully!");
 });
@@ -64,7 +73,9 @@ async function start() {
       serverSelectionTimeoutMS: 10000,
     });
     console.log("✅ MongoDB connected successfully");
-    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+    app.listen(PORT, () =>
+      console.log(`🚀 Server running on port ${PORT}`)
+    );
   } catch (err) {
     console.error("❌ Error starting server:", err);
     process.exit(1);
